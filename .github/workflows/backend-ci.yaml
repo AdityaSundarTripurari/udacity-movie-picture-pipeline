@@ -2,63 +2,51 @@
 
 name: Backend Continuous Integration
 
-# ---- TRIGGERS ----
 on:
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'starter/backend/**'
-  # CRITICAL RUBRIC REQUIREMENT: allows manually running this from the
-  # "Actions" tab on GitHub, via the "Run workflow" button.
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: starter/backend
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: starter/backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pipenv'
-
-      - name: Install pipenv
-        run: pip install pipenv
-
-      - name: Install dependencies (including dev deps for lint/test tools)
-        run: pipenv install --dev
-
-      - name: Run lint
-        run: pipenv run lint
+          cache-dependency-path: starter/backend/Pipfile.lock
+      - run: pip install pipenv
+      - run: pipenv install --dev
+      - run: pipenv run lint
 
   test:
+    name: Test
     runs-on: ubuntu-latest
-    needs: lint
-    defaults:
-      run:
-        working-directory: starter/backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pipenv'
+          cache-dependency-path: starter/backend/Pipfile.lock
+      - run: pip install pipenv
+      - run: pipenv install --dev
+      - run: pipenv run test
 
-      - name: Install pipenv
-        run: pip install pipenv
-
-      - name: Install dependencies (including dev deps for lint/test tools)
-        run: pipenv install --dev
-
-      - name: Run tests
-        run: pipenv run test
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t backend:ci .
